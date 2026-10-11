@@ -5,7 +5,7 @@
 ### Deterministic Quality Gates & Hierarchical Context Scaffolding for AI Coding Agents
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CI / Quality Gates](https://github.com/miladjln/checkrail/actions/workflows/quality-gates.yml/badge.svg)](https://github.com/miladjln/checkrail/actions)
+[![CI / Quality Gates](https://github.com/seyed-milad-jalilian/checkrail/actions/workflows/quality-gates.yml/badge.svg)](https://github.com/seyed-milad-jalilian/checkrail/actions)
 [![Bash 4.4+](https://img.shields.io/badge/Bash-4.4%2B-green.svg)](https://www.gnu.org/software/bash/)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/)
 [![Security: Gitleaks](https://img.shields.io/badge/Security-Gitleaks-brightgreen.svg)](https://github.com/gitleaks/gitleaks)
@@ -121,7 +121,7 @@ Checkrail documents a failure-mode analysis and remediation record in [`docs/age
 
 ### 1. Installation & Environment Verification
 ```bash
-git clone https://github.com/miladjln/checkrail.git
+git clone https://github.com/seyed-milad-jalilian/checkrail.git
 cd checkrail
 
 # Run full diagnostic verification
@@ -214,7 +214,7 @@ If you incorporate **Checkrail** in academic papers, research benchmarks, or ind
   author = {Jalilian, Seyed Milad},
   title = {Checkrail: Deterministic Quality Gates and Hierarchical Context Scaffolding for AI Coding Agents},
   year = {2026},
-  url = {https://github.com/miladjln/checkrail},
+  url = {https://github.com/seyed-milad-jalilian/checkrail},
   version = {0.1.0}
 }
 ```

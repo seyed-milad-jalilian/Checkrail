@@ -22,7 +22,7 @@
 
 ## 📌 Project Status
 
-**Experimental (pre-1.0)**. Checkrail is under active development. Gate specifications, file formats, and runtime interfaces may evolve across releases. Use in production environments at your own discretion. No benchmark results have been published yet for token optimization claims. The gate harness is covered by scratch-repo smoke tests (`tests/run-tests.sh`) that run in CI on every push.
+**Experimental (pre-1.0)**. Checkrail is under active development. Gate specifications, file formats, and runtime interfaces may evolve across releases. Use in production environments at your own discretion. No benchmark results have been published yet for token optimization claims. The gate harness is covered by scratch-repo smoke tests (`tests/run-tests.sh`) that run in CI on pushes to `main` and on pull requests targeting `main`.
 
 ---
 
@@ -30,7 +30,7 @@
 
 As Large Language Models (LLMs) and autonomous agent frameworks (**Kilo**, **Claude Code**, **OpenCode**, **Cursor**, **Devin**) transition from exploratory code-completion to fully autonomous codebase refactoring and CI/CD operations, they introduce critical failure modes:
 
-1. **Context Bloat & Token Degradation (Attention Bleed)**: Recursive file-tree scanning and unfiltered context dumps exhaust attention mechanisms, increasing operational latency, API costs, and hallucination rates.
+1. **Context Bloat & Token Degradation (Attention Bleed)**: Recursive file-tree scanning and unfiltered context dumps exhaust attention mechanisms, which can increase operational latency, API costs, and hallucination rates — the working hypothesis behind Checkrail's context-minimization design.
 2. **Guardrail & Security Erosion**: Unconstrained agents inadvertently modify security manifests, weaken CI checks, or bypass permission boundaries.
 3. **Secret Ingestion & Exfiltration**: Accidental ingestion and staging of `.env` files, SSH credentials, and private keys.
 4. **Repository Documentation Drift**: Autonomous changes break manual architectural maps, invalidating agent grounding on subsequent turns.
@@ -76,14 +76,14 @@ Checkrail discards monolithic prompts in favor of an indexed 3-layer architectur
 - **Layer 2 (`docs/agent/protocol.md`)**: Deep execution workflows, loaded strictly when blocking ambiguities arise.
 
 ### 2. 🛡️ 9-Tier Quality Verification Gates (`scripts/quality-gates.sh`)
-Every agent and developer change is passed through a deterministic nine-tier verification pipeline (Gate 0 – Gate 8):
+Agent and developer changes are verified by a deterministic nine-tier verification pipeline (Gate 0 – Gate 8) whenever the gates run — via the pre-commit hook, CI, or manual invocation:
 * **Gate 0: Tooling Prerequisite Check** — Verifies major/minor version compliance (`.tool-versions`; patch levels are not compared).
 * **Gate 1: Base Branch & Differential Scoping** — Isolates target diffs and prevents unanchored commits.
 * **Gate 2: Clean Tree & Working-Copy Integrity** — Validates staging consistency and rejects untracked drift.
 * **Gate 3: Protected Guardrail Defense** — Blocks agent mutations to security, CI, and policy files unless explicitly authorized with `--allow-guardrail`.
 * **Gate 4: Shell Syntax & POSIX/LF Compliance** — Strict `bash -n` validation and line-ending verification.
-* **Gate 5: Static Analysis & Code Quality** — Python static typing, linting (`ruff`), and QA harnesses.
-* **Gate 6: Infrastructure & Configuration Verification** — Validates Terraform and cloud orchestration manifests.
+* **Gate 5: Python Code Quality** — Ruff format/lint checks and pytest execution on changed Python files (no static type checker).
+* **Gate 6: Terraform Verification** — Rejects `.tfvars` commits, format-checks changed Terraform files, and optionally runs `terraform validate` (when `TERRAFORM_VALIDATE=true`).
 * **Gate 7: Deterministic Documentation Verification** — Fails if documentation index (`docs/file-index.md`) drifts from disk state.
 * **Gate 8: Anti-Leak Cryptographic & Secret Scan** — Integrated Gitleaks analysis and fallback heuristic scanning.
 
@@ -99,7 +99,7 @@ Every agent and developer change is passed through a deterministic nine-tier ver
 
 ### 6. 🧪 Scratch-Repo Smoke Tests (`tests/run-tests.sh`)
 - A dependency-free Bash test suite that rebuilds disposable scratch repositories and asserts the gate boundary conditions end-to-end: protected-file modifications blocked, `--allow-guardrail` / `--ack-new-guardrail` authorization, staged symlinks rejected, HANDOVER section and line-limit enforcement, staged-secret rejection, index-drift detection, branch-name enforcement, `.tfvars` rejection, and `kilo.jsonc` semantic assertions.
-- Runs in CI on every push and pull request ([`.github/workflows/tests.yml`](.github/workflows/tests.yml)), and locally with a single command:
+- Runs in CI on pushes to `main` and on pull requests targeting `main` ([`.github/workflows/tests.yml`](.github/workflows/tests.yml)), and locally with a single command:
   ```bash
   bash tests/run-tests.sh
   ```
@@ -179,8 +179,12 @@ bash tests/run-tests.sh
 # Fast-tier gate for staged changes (Pre-Commit)
 bash scripts/quality-gates.sh --staged-only --fast
 
-# Complete 9-tier verification suite (CI Equivalent)
+# Complete 9-tier verification suite (local defaults: strict versions and
+# terraform validate are opt-in)
 bash scripts/quality-gates.sh
+
+# CI-parity run (strict versions + terraform validate)
+STRICT_VERSIONS=true TERRAFORM_VALIDATE=true bash scripts/quality-gates.sh
 ```
 
 ---
@@ -192,7 +196,7 @@ bash scripts/quality-gates.sh
 | `scripts/doctor.sh` | Health check for environment, dependencies, CRLF, and pack integrity. | None |
 | `scripts/quality-gates.sh` | Comprehensive 9-tier automated quality and security gates. | `--staged-only`, `--fast`, `--allow-guardrail`, `--ack-new-guardrail`, `--quiet`, `--strict-versions` |
 | `scripts/sync-docs.sh` | Deterministic documentation indexer and drift detector. | `--check`, `--compact`, `--full` |
-| `tests/run-tests.sh` | Scratch-repo smoke tests for gate boundary conditions. | Optional name filter, e.g. `bash tests/run-tests.sh symlink` |
+| `tests/run-tests.sh` | Scratch-repo smoke tests for gate boundary conditions. | Optional name filter, e.g. `bash tests/run-tests.sh symlink`; errors if no test matches |
 
 ---
 

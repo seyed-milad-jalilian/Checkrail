@@ -7,7 +7,7 @@ set -euo pipefail
 # and coreutils are enough. Python (optional) enables the kilo.jsonc
 # semantic-assertion tests. The staged-secret test forces the built-in
 # Gate 8 fallback scanner for determinism; the gitleaks path is exercised
-# separately by the quality-gates CI workflow on every push.
+# separately by the quality-gates CI workflow on pushes to main and PRs.
 #
 # Usage: bash tests/run-tests.sh [name-filter]
 
@@ -25,6 +25,7 @@ trap 'rm -rf -- "$WORK_ROOT"' EXIT
 
 PASS=0
 FAIL=0
+MATCHED=0
 FAILED_TESTS=()
 FILTER="${1:-}"
 
@@ -155,7 +156,14 @@ resync() {
 }
 
 want() {
-    [[ -z "$FILTER" || "$1" == *"$FILTER"* ]]
+    if [[ -z "$FILTER" ]]; then
+        return 0
+    fi
+    if [[ "$1" == *"$FILTER"* ]]; then
+        MATCHED=$((MATCHED + 1))
+        return 0
+    fi
+    return 1
 }
 
 # ── Tests ───────────────────────────────────────────────────────
@@ -410,6 +418,10 @@ if (( FAIL > 0 )); then
     for t in "${FAILED_TESTS[@]+"${FAILED_TESTS[@]}"}"; do
         note "  - $t"
     done
+    exit 1
+fi
+if [[ -n "$FILTER" ]] && (( MATCHED == 0 )); then
+    note "ERROR: no tests matched filter '$FILTER'"
     exit 1
 fi
 exit 0

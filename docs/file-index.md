@@ -22,13 +22,15 @@ Mode: compact
 | .github/ISSUE_TEMPLATE/bug_report.yml | Issue template for bug reports |
 | .github/ISSUE_TEMPLATE/feature_request.yml | Issue template for feature requests |
 | .github/workflows/quality-gates.yml | CI workflow running the same gates |
+| .github/workflows/tests.yml | CI workflow running scratch-repo smoke tests |
 | docs/agent/SUMMARY.md | Project architecture and stack context |
 | docs/agent/protocol.md | Repository agent protocol |
-| docs/agent/bootstrap-audit.md | Agent pack installation verification and security audit |
+| docs/agent/bootstrap-audit.md | Guardrail implementation notes and scope statement |
 | scripts/sync-docs.sh | Regenerates and verifies docs/file-index.md |
 | scripts/quality-gates.sh | Generic repo quality gates for staged changes |
 | scripts/doctor.sh | Health check for pack installation and environment |
 | scripts/file-descriptions.txt | Canonical file descriptions map for doc generation |
+| tests/run-tests.sh | Scratch-repo smoke tests for gate boundary conditions |
 | .kilo/setup-script.ps1 | Agent Manager setup script |
 | CITATION.cff | Academic citation metadata |
 | LICENSE | MIT License (Seyed Milad Jalilian) |
@@ -43,8 +45,9 @@ Mode: compact
 | . | 12 |
 | .github | 3 |
 | .github/ISSUE_TEMPLATE | 2 |
-| .github/workflows | 1 |
+| .github/workflows | 2 |
 | .kilo | 1 |
 | .vscode | 2 |
 | docs/agent | 3 |
 | scripts | 4 |
+| tests | 1 |

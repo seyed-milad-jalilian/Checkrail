@@ -9,7 +9,8 @@
 
 [PIPELINES]
 1. Developer/Agent Edit -> Pre-Commit Quality Gate (Fast Tier) -> Staged Verification
-2. Git Push / PR -> GitHub Actions Quality Gate (Doctor + Full 8-Tier Gates) -> Merged to main
+2. Git Push / PR -> GitHub Actions Quality Gate (Doctor + Full 9-Tier Gates, Gate 0-8)
+   + Scratch-Repo Smoke Tests (tests/run-tests.sh) -> Merged to main
 
 [REPO CONVENTIONS]
 - Always-on rules: root `AGENTS.md`
@@ -17,3 +18,4 @@
 - Complex workflow: `docs/agent/protocol.md` (only if still blocked after this file)
 - Session state: `docs/agent/HANDOVER.md` (only on continue / resume)
 - Generated map: `docs/file-index.md` (compact; do not hand-edit)
+- Smoke tests: `tests/run-tests.sh` (run before pushing gate/script changes)

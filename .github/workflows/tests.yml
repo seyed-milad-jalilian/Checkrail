@@ -1,0 +1,28 @@
+name: tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Run scratch-repo smoke tests
+        run: bash tests/run-tests.sh
+
+      - name: Gate syntax check
+        run: bash -n scripts/quality-gates.sh scripts/sync-docs.sh scripts/doctor.sh

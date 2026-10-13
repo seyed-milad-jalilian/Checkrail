@@ -36,4 +36,11 @@ Never use `--no-verify` as it bypasses all local safety hooks.
 [Tool versions]
 - `.tool-versions` is checked tiered: a MAJOR mismatch (e.g. python 2 vs 3) always fails;
   a MINOR mismatch (3.12 vs 3.13) only warns, so the pack runs on any environment.
-  Pass `--strict-versions` to fail on any mismatch. In CI, set `STRICT_VERSIONS=true` in the job environment.
+  Pass `--strict-versions` to fail on minor mismatches too. In CI, set
+  `STRICT_VERSIONS=true` in the job environment. Patch-level differences are
+  never compared: `8.18` accepts any `8.18.x`.
+
+[Tests]
+- Smoke tests live in `tests/run-tests.sh`; run `bash tests/run-tests.sh` before
+  pushing any change to the gate scripts, sync-docs, or guardrail policy.
+- CI runs them on every push/PR via `.github/workflows/tests.yml`.

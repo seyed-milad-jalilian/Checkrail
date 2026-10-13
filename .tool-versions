@@ -1,5 +1,6 @@
 # Recommended tool versions — Gate 0 fails on MAJOR mismatch, warns on MINOR.
-# Use `--strict-versions` (or STRICT_VERSIONS=true in CI) to fail on any mismatch.
+# Use `--strict-versions` (or STRICT_VERSIONS=true in CI) to fail on minor
+# mismatches too. Only major.minor is compared; patch levels are not enforced.
 python 3.12
 terraform 1.11
 gitleaks 8.18

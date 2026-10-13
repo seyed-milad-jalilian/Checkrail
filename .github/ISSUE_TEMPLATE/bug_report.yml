@@ -1,5 +1,5 @@
 name: Bug report
-description: Create a report to help us improve Agent Opt
+description: Create a report to help us improve Checkrail
 labels: ["bug"]
 body:
   - type: markdown

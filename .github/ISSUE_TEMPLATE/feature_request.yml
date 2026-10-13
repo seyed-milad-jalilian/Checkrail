@@ -1,11 +1,11 @@
 name: Feature request
-description: Suggest an idea or guardrail improvement for Agent Opt
+description: Suggest an idea or guardrail improvement for Checkrail
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thank you for suggesting improvements to Agent Opt!
+        Thank you for suggesting improvements to Checkrail!
   - type: textarea
     id: problem
     attributes:

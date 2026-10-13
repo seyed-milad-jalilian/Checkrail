@@ -37,6 +37,7 @@ Thumbs.db
 .cache/
 .parcel-cache/
 .turbo/
+debug.log
 
 # Editor & IDE artifacts
 .idea/

@@ -6,7 +6,7 @@ authors:
     orcid: "https://orcid.org/0000-0002-3287-9801"
 title: "Checkrail: Deterministic Quality Gates & Hierarchical Context Scaffolding for AI Coding Agents"
 version: 0.1.0
-abstract: "Checkrail is an open-source deterministic harness providing a pre-gate check (tooling prerequisite) plus eight verification tiers (Gates 1–8), layered context hierarchies (L0/L1/L2), and session continuity protocols designed to structure and safeguard autonomous AI agent code modifications."
+abstract: "Checkrail is an open-source deterministic harness providing nine verification tiers (Gates 0-8), layered context hierarchies (L0/L1/L2), scratch-repo smoke tests, and session continuity protocols designed to structure and safeguard autonomous AI agent code modifications."
 date-released: 2026-10-04
 url: "https://github.com/seyed-milad-jalilian/checkrail"
 repository-code: "https://github.com/seyed-milad-jalilian/checkrail"

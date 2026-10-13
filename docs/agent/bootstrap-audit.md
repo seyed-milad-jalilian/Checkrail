@@ -1,40 +1,97 @@
-# Bootstrap Audit Findings & Fixes (F-01..F-24)
+# Guardrail Implementation Notes
 
-This document records every finding from the hardened-bootstrap audit and how
-each was verified (pytest run, scratch-repo smoke tests, `bash -n` syntax
-checks). Referenced from the bootstrap script header, `docs/agent/SUMMARY.md`,
-and `docs/agent/protocol.md`.
+This file documents the defenses that are actually implemented in the shipped
+scripts, and states plainly what is and is not verified. It is an
+implementation note, **not** a formal security audit, and it makes no claims
+about third-party review or certification.
 
-| ID | Finding | Fix |
-|----|---------|-----|
-| F-01 | `scripts/sync-docs.sh` crashed on an unset `REPO_ROOT` because it is executed as a separate child process and never inherits an unexported variable from the parent bootstrap. | `REPO_ROOT` is now assigned locally, immediately after `cd`, inside the script itself. |
-| F-02 | `scripts/quality-gates.sh` used Bash-4-only `declare -A`, breaking on macOS's default Bash 3.2. | Rewritten to avoid associative arrays entirely (plain `case` statements / functions). |
-| F-03 | The `DLQTransport` contract assumed `send()` always returns a strict Python `bool`, but real boto3 SQS/SNS clients return a response dict. | `_is_successful_response()` now normalizes bool, `None`, and boto3-style dict responses (`ResponseMetadata.HTTPStatusCode`, `MessageId`, `SequenceNumber`, `success`). |
-| F-04 | Deleting a committed `.tfvars` file was rejected by Gate 5. | The tfvars check now uses diff-filter `ACMR` (Added/Copied/Modified/Renamed), excluding `D` (deleted). |
-| F-05 | `route_id` sanitization was an incomplete deny-list. | Replaced with a strict allow-list regex (`^[A-Za-z0-9_.:-]{1,64}$`), validated against the raw (unstripped) string. |
-| F-06 | Timestamps had no plausibility bounds. | Added a ±24h past / +5min future skew window relative to a reference time. |
-| F-07 | CI silently allowed brand-new protected files to be introduced without any human review. | New protected files now require an explicit `NEW_GUARDRAIL_INTRODUCTION_ACK=true` admin acknowledgement; modifications to *existing* protected files are always blocked. |
-| F-08 | Scope collection silently fell back to an unscoped `git diff` if `BASE_REF` could not be classified. | `collect_scoped_files()` now fails closed (`exit 1`) when the base ref resolves to an unsupported git object type. |
-| F-09 | Raw ingest records could end up in logs. | Only a redacted preview (`_redact_record_for_log`) is ever printed; full records only flow to the DLQ transport. |
-| F-10 | The path-traversal check rejected any path merely containing the substring `..` (e.g. `file..name.txt`). | Traversal is now checked per path *segment*, not by substring match. |
-| F-11 | TOCTOU window between existence check and file write. | A final existence/symlink re-check runs immediately before `mv` in `safe_write`/`safe_write_strict`. |
-| F-12 | The bootstrap's own `mktemp` scratch files (`.tmp.*`) were not gitignored, so an interrupted run could leave an untracked file that fails Gate 2. | `.gitignore` now includes `.tmp.*`. |
-| F-13 | `overwrite_write()` never checked whether the existing target was a symlink before clobbering it. | It now refuses to overwrite a symlink or non-regular file target. |
-| F-14 | Gate 0 unconditionally required all four pinned tools to be installed, even when a run touched no relevant files. | Tool-version checks are now lazy, invoked only by the gate that actually needs the tool. |
-| F-15 | Content comparisons materialized a second temp file for every single comparison. | Comparisons now use process substitution (`cmp -s target <(...)`). |
-| F-16 | Protected-pattern scanning issued one `git diff` invocation per pattern (13+ calls). | `collect_scoped_files()` now combines all patterns into a single `git diff` call. |
-| F-17 | CI re-downloaded pip packages, Terraform plugins, and pinned tool archives on every run. | CI now caches pip (`actions/setup-python` cache), the Terraform plugin cache dir, and the tflint/gitleaks download archives. |
-| F-18 | Contract tests didn't cover non-dict / float / `None` input types. | Added `test_non_dict_record_rejected`, `test_none_record_rejected`, `test_non_integer_delay_types_rejected`. |
-| F-19 | Contract tests didn't cover the timestamp plausibility window. | Added past/future boundary and over-limit tests. |
-| F-20 | Quarantine tests didn't cover boto3/SQS/SNS-style DLQ responses. | Added SQS/SNS-style response tests plus an HTTP-error-status test. |
-| F-21 | SHA-pinned GitHub Actions in `ci.yml` would silently go stale. | Added `.github/dependabot.yml` for weekly `github-actions` updates. |
-| F-22 | Tool-version checks required an exact byte-for-byte match, breaking on any routine patch release. | Checks now require the same major.minor and patch `>=` the pinned minimum. |
-| F-23 | This very file (`docs/agent/bootstrap-audit.md`) was referenced everywhere but never actually created by the bootstrap script. | The bootstrap now writes this file. |
-| F-24 | `BOOTSTRAP_TOUCHED_FILES` was dereferenced with bare `"${BOOTSTRAP_TOUCHED_FILES[@]}"` / `"${BOOTSTRAP_TOUCHED_FILES[*]}"` in `append_if_missing()` and the final staging loop. On Bash < 4.4 (e.g. macOS's Bash 3.2) with `set -u`, expanding an empty array this way raises `unbound variable`, crashing an idempotent re-run where no new file was created. | Both sites now use the same `"${arr[@]:-}"` / `"${arr[*]:-}"` guard already used for `GLOBAL_TMP_FILES` in `cleanup_tmp_files()`. |
+The behavior described below is exercised by the scratch-repo smoke tests in
+`tests/run-tests.sh` (see "Verification" at the end).
 
-## Verification methodology
-- `bash -n scripts/*.sh` for syntax validation.
-- `pytest tests/ -v` for full contract coverage (schema + quarantine).
-- Scratch-repo smoke tests: fresh clone bootstrap, idempotent re-run bootstrap
-  (empty-touched-files path), and a simulated PR introducing/tampering with a
-  protected file.
+## Implemented defenses
+
+### Boundary scoping
+- The diff scope is collected **once** from a single `git diff` invocation
+  (staged changes locally, `BASE_REF...HEAD` in CI) and reused by every gate.
+- The base ref fails closed: if it cannot be resolved to a commit or tree,
+  the run aborts instead of silently falling back to an unscoped diff.
+  Only two legitimate fallbacks exist: `HEAD~1` when no remote exists, and the
+  empty tree for a repository's first commit.
+
+### Protected-file defense (Gate 3)
+- Protected paths include the governance files, gate scripts, CI workflows,
+  and the permissions map. Modifications to existing protected files are
+  blocked unless `--allow-guardrail` is passed; *introducing* new protected
+  files additionally requires `--ack-new-guardrail` (a separate, explicit
+  acknowledgement).
+- In CI these acknowledgements must come from repository variables
+  (`GUARDRAIL_MODIFICATION_AUTHORIZED`, `NEW_GUARDRAIL_INTRODUCTION_ACK`),
+  which only a repository admin can set — and can revoke after the change
+  lands.
+- Symlink defense: protected paths are checked both in the working tree and
+  by staged git mode (`120000`), so a symlink cannot be smuggled in through
+  the index. Whole pack directories (`scripts/`, `docs/`, `.github/`) staged
+  as symlink entries are rejected explicitly.
+- `kilo.jsonc` is semantically asserted (Python, JSONC-aware): the deny/ask
+  permission floor, the `bash` default of `ask`, the metacharacter traps, the
+  destructive-command deny globs, allow-key structural invariants, and
+  last-match ordering rules. Both the working-tree copy and the staged blob
+  are validated independently.
+
+### State handover validation (Gate 2)
+- `docs/agent/HANDOVER.md` must exist as a regular file, be present in the
+  index (staged deletions are caught), stay within 40 lines, and contain all
+  five required sections. Both the live working-tree copy and the staged
+  blob are validated, so a valid working file cannot mask an invalid staged
+  one.
+
+### Documentation drift (Gate 7)
+- `docs/file-index.md` is regenerated deterministically and compared against
+  the **staged blob** of the file (what will actually be committed), not just
+  the working-tree copy.
+- `scripts/sync-docs.sh` refuses to read or write through symlinks and writes
+  via temporary files under `.git` (never directly into a path that could be
+  swapped underneath it).
+
+### Secret scanning (Gate 8)
+- CI requires gitleaks and scans the full commit range of the change.
+- Locally, gitleaks is used when installed; otherwise a conservative
+  fallback regex scans every staged blob for well-known key formats
+  (AWS keys, private key headers, GitHub/Slack tokens). The fallback is
+  heuristic, not exhaustive — it is documented as such and is not a
+  substitute for gitleaks.
+
+### Environment robustness
+- All three scripts require Bash 4.4+ and re-exec through Homebrew's bash on
+  macOS when the system Bash 3.2 is too old.
+- Python detection probes for actual functionality (a Windows "App execution
+  alias" stub makes `command -v python3` succeed while the binary is
+  non-functional), so gates degrade gracefully instead of crashing under
+  `set -e`.
+- Arrays are expanded with `${arr[@]+...}` guards so old shells with
+  `set -u` do not abort on empty arrays.
+- `--staged-only` and `--fast` exist so a pre-commit hook can run the
+  relevant subset; the remaining gates always run.
+
+## What is NOT claimed
+- No formal audit or third-party review has been performed on this project.
+- There is no application code in this repository; the Python tooling exists
+  only for the `kilo.jsonc` semantic assertions. There are no Python unit
+  tests, and the smoke tests do not enumerate every possible bypass.
+- Gate 0 compares `major.minor` versions only; patch-level drift of pinned
+  tools is never enforced.
+- The local secret fallback is a heuristic regex, not a full scanner.
+- Terraform validation only runs when Terraform files change and the
+  `TERRAFORM_VALIDATE` environment is enabled; the smoke tests cover the
+  `.tfvars`-rejection rule, not full Terraform validation.
+
+## Verification
+- `bash -n scripts/*.sh` syntax validation (Gate 4, every run).
+- `bash tests/run-tests.sh` — 15 scratch-repo smoke tests covering: clean
+  change passes, protected-file modification blocked/authorized, new
+  guardrail file blocked/acknowledged, staged symlink rejected, HANDOVER
+  section and line-limit enforcement, staged secret rejected by the fallback
+  scanner, index drift rejected, branch-name enforcement, `.tfvars`
+  rejection, and `kilo.jsonc` semantic acceptance/rejection.
+- CI runs the same gates on every push (`quality-gates.yml`) and the smoke
+  tests on every push (`tests.yml`).

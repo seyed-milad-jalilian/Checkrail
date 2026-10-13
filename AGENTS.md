@@ -25,6 +25,7 @@ Else: read/edit only paths the user named.
 - Pre-done: `bash scripts/quality-gates.sh` (flags only: `--allow-guardrail`, `--ack-new-guardrail`, `--staged-only`, `--fast`).
   No `ENV=value` prefix on the gates command (ask-trapped); `SKIP=…` is for `git commit`, not gates. Other flags (`--quiet`, `--strict-versions`, etc.) are for humans/CI.
   `--staged-only` skips only Gate 2's clean-tree check; `--fast` skips only Gate 5 (Python) and Gate 6 (Terraform).
+- Gate/sync/guardrail changes: also run `bash tests/run-tests.sh` (scratch-repo smoke tests; CI runs them via `tests.yml`).
 - Protected files: `AGENTS.md`, `kilo.jsonc`, `scripts/quality-gates.sh`, `scripts/sync-docs.sh`, `scripts/doctor.sh`, `scripts/file-descriptions.txt`, `.pre-commit-config.yaml`, `.kilocodeignore`, `docs/agent/SUMMARY.md`, `docs/agent/protocol.md` (gates will tell you if unsure).
 - Protected commit: run gates with `--allow-guardrail` (or `--ack-new-guardrail` specifically for new guardrail files).
   Then `SKIP=kilo-quality-gates git commit`. No `--no-verify`.

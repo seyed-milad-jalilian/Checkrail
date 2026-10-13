@@ -14,15 +14,17 @@ kilo.jsonc: Kilo engine permission map (engine-only; not for the LLM)
 .github/ISSUE_TEMPLATE/bug_report.yml: Issue template for bug reports
 .github/ISSUE_TEMPLATE/feature_request.yml: Issue template for feature requests
 .github/workflows/quality-gates.yml: CI workflow running the same gates
+.github/workflows/tests.yml: CI workflow running scratch-repo smoke tests
 docs/agent/SUMMARY.md: Project architecture and stack context
 docs/agent/protocol.md: Repository agent protocol
 docs/agent/HANDOVER.md: Session handover state
-docs/agent/bootstrap-audit.md: Agent pack installation verification and security audit
+docs/agent/bootstrap-audit.md: Guardrail implementation notes and scope statement
 docs/file-index.md: Generated compact file map (do not edit)
 scripts/sync-docs.sh: Regenerates and verifies docs/file-index.md
 scripts/quality-gates.sh: Generic repo quality gates for staged changes
 scripts/doctor.sh: Health check for pack installation and environment
 scripts/file-descriptions.txt: Canonical file descriptions map for doc generation
+tests/run-tests.sh: Scratch-repo smoke tests for gate boundary conditions
 .kilo/package.json: Worktree agent dependency specification
 .kilo/package-lock.json: Lockfile for agent dependencies
 .kilo/.gitignore: Ignore rules for agent workspace

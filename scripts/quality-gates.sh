@@ -128,7 +128,7 @@ log "=== Kilo Generic Quality Gates ==="
 
 # ── Gate 0: Tool versions ───────────────────────────────────────
 if [[ -f ".tool-versions" ]]; then
-    log "[Gate 0] Checking tool versions (minor advisory / major strict; --strict-versions for exact match)"
+    log "[Gate 0] Checking tool versions (major strict / minor advisory; --strict-versions enforces the pinned major.minor)"
 
     declare -A TOOL_BIN_MAP=(
         ["nodejs"]="node"
